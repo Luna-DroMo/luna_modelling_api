@@ -6,6 +6,6 @@ from models.base import Base
 
 class Account(Base):
     __tablename__ = "accounts"
-    name = Column(String, unique=True, nullable=False, index=True)
+    account_name = Column(String, unique=True, nullable=False, index=True)
     api_key = Column(UUID(as_uuid=True), unique=True,
                      nullable=False, default=uuid4, index=True)
