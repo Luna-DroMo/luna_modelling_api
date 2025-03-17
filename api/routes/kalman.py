@@ -4,24 +4,10 @@ from core.deps.check_api_key import verify_api_key
 from core.database import get_db
 from core.deps.check_quota import check_quota
 from sqlalchemy.ext.asyncio import AsyncSession
-import numpy as np
-from modelling.kalman_filter import KalmanFilter
-from modelling.constants import F, H, Q, R, x0
 from schemas.kalman import KalmanInput, KalmanOutput
+from services.kalman import process_kalman_filter
 
 router = APIRouter(tags=["kalman"])
-
-
-@router.get("/", include_in_schema=True)
-async def root_test():
-    print("Root test endpoint reached!")
-    return {"message": "Root endpoint working"}
-
-
-@router.post("/test", include_in_schema=True)
-async def test_endpoint():
-    print("Test endpoint reached!")
-    return {"message": "Hello World"}
 
 
 @router.post("/{account_id}/kalman", response_model=KalmanOutput)
@@ -32,28 +18,26 @@ async def kalman_filter(
     current_account: Account = Depends(verify_api_key),
     db: AsyncSession = Depends(get_db)
 ):
-    print("Account id", account_id)
-    print("Current account", current_account.id)
     if current_account.id != account_id:
         raise HTTPException(status_code=404, detail="Account not found.")
 
     try:
-        # Convert input data to numpy array
-        observations = np.array(kalman_input.results)
 
-        # Create and run Kalman filter with constants from constants.py
-        kf = KalmanFilter(F=F, H=H, Q=Q, R=R, x0=x0)
+        input_data = kalman_input.results
 
-        predictions_state, predictions_cov, predictions_obs = kf.forward(
-            observations)
+        # Process the input data using the Kalman filter service
+        filtered_data = process_kalman_filter(input_data)
 
-        # Convert numpy arrays to Python lists for JSON serialization
-        filtered_data = [float(obs[0][0]) for obs in predictions_obs]
-
+        # Return the results
         return KalmanOutput(
             processed_results=filtered_data,
-            input_data=kalman_input.results
+            input_data=input_data
         )
 
+    except ValueError as e:
+        # Handle validation errors
+        raise HTTPException(status_code=400, detail=str(e))
+
     except Exception as e:
+        # Handle unexpected errors
         raise HTTPException(status_code=500, detail=str(e))
