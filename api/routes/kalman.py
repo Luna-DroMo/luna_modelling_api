@@ -1,22 +1,15 @@
 from fastapi import Depends, APIRouter, HTTPException
-from pydantic import BaseModel
 from models.account import Account
-from core.deps import verify_api_key
-from typing import List, Dict, Any
+from core.deps.check_api_key import verify_api_key
+from core.database import get_db
+from core.deps.check_quota import check_quota
+from sqlalchemy.ext.asyncio import AsyncSession
 import numpy as np
 from modelling.kalman_filter import KalmanFilter
 from modelling.constants import F, H, Q, R, x0
+from schemas.kalman import KalmanInput, KalmanOutput
 
 router = APIRouter(tags=["kalman"])
-
-
-class KalmanInput(BaseModel):
-    results: List[float]
-
-
-class KalmanOutput(BaseModel):
-    processed_results: List[float]
-    input_data: List[float]
 
 
 @router.get("/", include_in_schema=True)
@@ -32,10 +25,12 @@ async def test_endpoint():
 
 
 @router.post("/{account_id}/kalman", response_model=KalmanOutput)
+@check_quota
 async def kalman_filter(
     account_id: int,
     kalman_input: KalmanInput,
-    current_account: Account = Depends(verify_api_key)
+    current_account: Account = Depends(verify_api_key),
+    db: AsyncSession = Depends(get_db)
 ):
     print("Account id", account_id)
     print("Current account", current_account.id)

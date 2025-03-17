@@ -9,3 +9,4 @@ class Account(Base):
     account_name = Column(String, unique=True, nullable=False, index=True)
     api_key = Column(UUID(as_uuid=True), unique=True,
                      nullable=False, default=uuid4, index=True)
+    quota = Column(Integer, nullable=False, default=0)
