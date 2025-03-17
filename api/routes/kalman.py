@@ -24,7 +24,7 @@ async def kalman_filter(
     try:
 
         input_data = kalman_input.results
-
+        print("input_data: ", input_data)
         # Process the input data using the Kalman filter service
         filtered_data = process_kalman_filter(input_data)
 

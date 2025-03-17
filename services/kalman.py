@@ -10,7 +10,7 @@ def process_kalman_filter(input_data: List[List[float]]) -> List[float]:
 
     Args:
         input_data: List of lists of float values to be filtered
-                   The inner list contains multiple observations as a time series
+                   Each inner list represents a week of observations
 
     Returns:
         List of filtered values
@@ -19,27 +19,13 @@ def process_kalman_filter(input_data: List[List[float]]) -> List[float]:
         ValueError: If input data is invalid
     """
     try:
-        # Validate input structure
-        if len(input_data) != 1:
+        # Basic validation - ensure we have data
+        if not input_data or any(len(week) == 0 for week in input_data):
             raise ValueError(
-                "Input data must contain exactly one list of observations")
+                "Input data must contain non-empty lists of observations")
 
-        if len(input_data[0]) < 1:
-            raise ValueError(
-                "Input data must contain at least one observation")
-
-        # Extract the time series data from the inner list
-        time_series = input_data[0]
-
-        # Convert each element in the time series to a single-element observation
-        # This creates a list of column vectors, each with one element
-        observations = np.array([[x] for x in time_series])
-
-        # Check if each observation has the correct dimension
-        expected_dim = H.shape[0]
-        if observations.shape[1] != expected_dim:
-            raise ValueError(
-                f"Each observation must have {expected_dim} element(s)")
+        # Convert directly to numpy array
+        observations = np.array(input_data)
 
         # Create and run Kalman filter with constants from constants.py
         kf = KalmanFilter(F=F, H=H, Q=Q, R=R, x0=x0)
