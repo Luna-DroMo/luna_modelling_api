@@ -2,7 +2,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
 from core.config import settings
-from api.routes import health, kalman
+from api.routes import health, kalman, panas
 
 
 @asynccontextmanager
@@ -33,3 +33,4 @@ if settings.BACKEND_CORS_ORIGINS:
 # Include routers
 app.include_router(health.router, prefix=settings.API_V1_PREFIX)
 app.include_router(kalman.router, prefix=settings.API_V1_PREFIX)
+app.include_router(panas.router, prefix=settings.API_V1_PREFIX)
