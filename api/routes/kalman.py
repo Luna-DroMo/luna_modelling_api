@@ -41,8 +41,19 @@ async def kalman_filter(
 
     try:
         # Process the input data using the Kalman filter service
-        result = process_kalman_filter(
-            kalman_input.results, save=kalman_input.save)
+        if kalman_input.save:
+            result = await process_kalman_filter(
+                input_data=kalman_input.results,
+                save=kalman_input.save,
+                unique_identifier=kalman_input.unique_identifier,
+                db=db,
+                account_id=account_id
+            )
+        else:
+            result = await process_kalman_filter(
+                input_data=kalman_input.results,
+                save=False
+            )
 
         # Check if we got a special message response
         if "message" in result:
@@ -58,7 +69,7 @@ async def kalman_filter(
 
     except ValueError as e:
         # Handle validation errors
-        #  logger.error(f"Validation error: {str(e)}")
+        #  logger.error(f"Validation error: {str(e)}")
         raise HTTPException(status_code=400, detail=str(e))
 
     except Exception as e:
