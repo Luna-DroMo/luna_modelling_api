@@ -3,6 +3,7 @@ from typing import List, Tuple, Any, Dict, Optional
 from modelling.kalman_filter import KalmanFilter
 from modelling.constants import F, H, Q, R, x0
 from models.data import Data
+from sqlalchemy import select
 
 
 async def process_kalman_filter(
@@ -25,7 +26,6 @@ async def process_kalman_filter(
 
     Returns:
         Dictionary containing filtered values, raw state, and smoothed state
-        or a message when saving data
 
     Raises:
         ValueError: If input data is invalid
@@ -35,6 +35,8 @@ async def process_kalman_filter(
         if not input_data or any(len(week) == 0 for week in input_data):
             raise ValueError(
                 "Input data must contain non-empty lists of observations")
+
+        observations = None
 
         # Handle save case
         if save:
@@ -46,18 +48,34 @@ async def process_kalman_filter(
                 raise ValueError(
                     "Database session is required for save operation")
 
-            data_entry = Data(
+            # First, save the new data
+            new_data_entry = Data(
                 unique_identifier=unique_identifier,
                 data=input_data,
                 account_id=account_id
             )
-            db.add(data_entry)
+            db.add(new_data_entry)
             await db.commit()
-            return {"message": "Data has been successfully saved to the database."}
 
-        # Handle Kalman filter case (when save is False)
-        # Convert directly to numpy array
-        observations = np.array(input_data)
+            # Then, fetch all existing data for this unique_identifier
+            existing_data_query = select(Data).where(
+                Data.unique_identifier == unique_identifier,
+                Data.account_id == account_id
+            ).order_by(Data.created_at)
+
+            result = await db.execute(existing_data_query)
+            existing_records = result.scalars().all()
+
+            # Combine all data for processing
+            all_data = []
+            for record in existing_records:
+                all_data.extend(record.data)
+
+            # Convert combined data to numpy array
+            observations = np.array(all_data)
+        else:
+            # For non-save case, just use the input data
+            observations = np.array(input_data)
 
         # Create and run Kalman filter with constants from constants.py
         kf = KalmanFilter(F=F, H=H, Q=Q, R=R, x0=x0)
@@ -82,7 +100,8 @@ async def process_kalman_filter(
         return {
             "filtered_data": filtered_data,
             "raw_state": raw_state_flat,
-            "smooth_state": smooth_state_flat
+            "smooth_state": smooth_state_flat,
+            "data_count": len(observations) if observations is not None else 0
         }
 
     except Exception as e:
